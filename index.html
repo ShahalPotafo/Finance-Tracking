@@ -6,6 +6,103 @@
 <title>Finance Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- SUPABASE CLOUD SYNC LAYER -->
+<script>
+(function(){
+  'use strict';
+  var SB_URL = 'https://nenbrcfcrylazvfahxvj.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lbmJyY2ZjcnlsYXp2ZmFoeHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTQ4NDQsImV4cCI6MjA5NjUzMDg0NH0.kxEWZnm9NPFZ54BfAzFM2_zUQbk-PyMEZ8Irn9I4Gf8';
+  var sb = window.supabase.createClient(SB_URL, SB_KEY);
+  window._sb = sb;
+  window._sbUser = null;
+
+  var TRACKED_KEYS = [
+    'potafo_cb_v3','potafo_cb_ob_v3',
+    'potafo_bb_v3','potafo_bb_ob_v3',
+    'paytrack_v1','fintrack_departments_v1',
+    'potafo_je_v1','potafo_ops_v1','potafo_ops_view',
+    'ml_main_groups','ml_groups','ml_ledgers',
+    'potafo_ds_settings_v1','potafo_ds_backups_v1'
+  ];
+
+  async function sbPush(key, value) {
+    if (!window._sbUser) return;
+    try {
+      await sb.from('app_storage').upsert(
+        { user_id: window._sbUser.id, key: key, value: value },
+        { onConflict: 'user_id,key' }
+      );
+    } catch(e) { console.warn('sbPush', key, e); }
+  }
+
+  async function sbDelete(key) {
+    if (!window._sbUser) return;
+    try {
+      await sb.from('app_storage').delete()
+        .eq('user_id', window._sbUser.id).eq('key', key);
+    } catch(e) { console.warn('sbDelete', key, e); }
+  }
+
+  window._sbPullAll = async function() {
+    if (!window._sbUser) return;
+    try {
+      var uid = window._sbUser.id;
+      var res = await sb.from('app_storage').select('key,value').eq('user_id', uid);
+      if (res.data) res.data.forEach(function(r){ localStorage._origSet(r.key, r.value); });
+    } catch(e) { console.warn('sbPullAll', e); }
+  };
+
+  /* Intercept localStorage */
+  var _origSet    = localStorage.setItem.bind(localStorage);
+  var _origRemove = localStorage.removeItem.bind(localStorage);
+  localStorage._origSet = _origSet;
+
+  localStorage.setItem = function(key, value) {
+    _origSet(key, value);
+    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) sbPush(key, value);
+  };
+  localStorage.removeItem = function(key) {
+    _origRemove(key);
+    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) sbDelete(key);
+  };
+
+  window._sbPush   = sbPush;
+  window._sbDelete = sbDelete;
+})();
+</script>
+
+<!-- LOGIN SCREEN STYLES -->
+<style>
+#auth-screen{position:fixed;inset:0;z-index:9999;background:#09090d;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;}
+.auth-box{background:#0e0f14;border:1px solid #1c1e2a;border-radius:16px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.auth-logo{width:44px;height:44px;background:linear-gradient(135deg,#5af0c8,#a78bfa);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 20px;}
+.auth-title{font-size:20px;font-weight:800;text-align:center;color:#e4e6f2;margin-bottom:4px;}
+.auth-sub{font-size:11px;color:#484d6a;text-align:center;letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;}
+.auth-tabs{display:flex;background:#13141a;border-radius:9px;padding:3px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;background:transparent;color:#484d6a;}
+.auth-tab.active{background:#1c1e2a;color:#e4e6f2;}
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-size:10px;font-weight:700;color:#484d6a;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.auth-field input{width:100%;padding:10px 13px;background:#09090d;border:1px solid #1c1e2a;border-radius:8px;color:#e4e6f2;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .18s;}
+.auth-field input:focus{border-color:#5af0c8;}
+.auth-btn{width:100%;padding:11px;background:#5af0c8;color:#09090d;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;transition:opacity .18s;}
+.auth-btn:hover{opacity:.85;}
+.auth-btn:disabled{opacity:.45;cursor:not-allowed;}
+.auth-msg{font-size:11px;text-align:center;margin-top:12px;min-height:16px;font-family:'DM Mono',monospace;}
+.auth-msg.error{color:#ff6b6b;}
+.auth-msg.success{color:#5af0c8;}
+.auth-user-bar{position:fixed;top:10px;right:16px;z-index:10000;display:flex;align-items:center;gap:10px;background:#0e0f14;border:1px solid #1c1e2a;border-radius:30px;padding:6px 14px 6px 10px;font-size:11px;font-family:'DM Mono',monospace;}
+.auth-user-dot{width:8px;height:8px;border-radius:50%;background:#5af0c8;flex-shrink:0;}
+.auth-user-email{color:#a0a5c0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.auth-signout-btn{background:none;border:none;color:#ff6b6b;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;padding:0;}
+.auth-loading-screen{position:fixed;inset:0;z-index:9998;background:#09090d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:'Syne',sans-serif;}
+.auth-spinner{width:36px;height:36px;border:3px solid #1c1e2a;border-top-color:#5af0c8;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.auth-loading-txt{font-size:12px;color:#484d6a;letter-spacing:1px;text-transform:uppercase;}
+</style>
+
 <style>
 /* ═══════════════════════════════════════════════════════
    FINANCE DASHBOARD  ·  NAVIGATION SHELL
@@ -10339,6 +10436,166 @@ window.shellNav = function(page) {
     var p = document.getElementById('ops-saved-panel');
     if (p && p.style.display !== 'none') opsSavedRender();
   };
+
+})();
+</script>
+
+
+<!-- ═══════════════════════════════════════
+     LOGIN / LOADING SCREENS + AUTH LOGIC
+═══════════════════════════════════════ -->
+
+<!-- Loading screen shown while checking session -->
+<div id="auth-loading-screen" class="auth-loading-screen">
+  <div class="auth-spinner"></div>
+  <div class="auth-loading-txt">Loading Finance Dashboard…</div>
+</div>
+
+<!-- Login / Signup screen -->
+<div id="auth-screen" style="display:none;">
+  <div class="auth-box">
+    <div class="auth-logo">💰</div>
+    <div class="auth-title">Finance Dashboard</div>
+    <div class="auth-sub">Sign in to access your data</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-login" onclick="authShowTab('login')">Sign In</button>
+      <button class="auth-tab" id="auth-tab-signup" onclick="authShowTab('signup')">Sign Up</button>
+    </div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">Sign In</button>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- Logged-in user bar (top-right) -->
+<div id="auth-user-bar" class="auth-user-bar" style="display:none;">
+  <div class="auth-user-dot"></div>
+  <span class="auth-user-email" id="auth-user-email"></span>
+  <button class="auth-signout-btn" onclick="authSignOut()">Sign Out</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var _authMode = 'login'; // 'login' | 'signup'
+
+  window.authShowTab = function(mode) {
+    _authMode = mode;
+    document.getElementById('auth-tab-login').classList.toggle('active', mode === 'login');
+    document.getElementById('auth-tab-signup').classList.toggle('active', mode === 'signup');
+    document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+    document.getElementById('auth-msg').textContent = '';
+    document.getElementById('auth-msg').className = 'auth-msg';
+  };
+
+  function authMsg(txt, type) {
+    var el = document.getElementById('auth-msg');
+    el.textContent = txt;
+    el.className = 'auth-msg ' + (type || '');
+  }
+
+  window.authSubmit = async function() {
+    var email = (document.getElementById('auth-email').value || '').trim();
+    var pass  = (document.getElementById('auth-password').value || '').trim();
+    if (!email || !pass) { authMsg('Please enter email and password.', 'error'); return; }
+    var btn = document.getElementById('auth-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Please wait…';
+    try {
+      var res;
+      if (_authMode === 'login') {
+        res = await window._sb.auth.signInWithPassword({ email: email, password: pass });
+      } else {
+        res = await window._sb.auth.signUp({ email: email, password: pass });
+      }
+      if (res.error) {
+        authMsg(res.error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = _authMode === 'login' ? 'Sign In' : 'Create Account';
+      } else {
+        if (_authMode === 'signup') {
+          authMsg('Account created! Check your email to confirm, then sign in.', 'success');
+          authShowTab('login');
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
+        } else {
+          authMsg('Signed in! Loading your data…', 'success');
+          window._sbUser = res.data.user;
+          await authOnLogin(res.data.user);
+        }
+      }
+    } catch(e) {
+      authMsg('Error: ' + e.message, 'error');
+      btn.disabled = false;
+      btn.textContent = _authMode === 'login' ? 'Sign In' : 'Create Account';
+    }
+  };
+
+  async function authOnLogin(user) {
+    window._sbUser = user;
+    /* Pull all cloud data into localStorage */
+    await window._sbPullAll();
+    /* Show the app */
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('auth-loading-screen').style.display = 'none';
+    var appShell = document.getElementById('app-shell');
+    if (appShell) appShell.style.display = 'flex';
+    /* Show user bar */
+    document.getElementById('auth-user-email').textContent = user.email;
+    document.getElementById('auth-user-bar').style.display = 'flex';
+    /* Re-render all modules with cloud data */
+    setTimeout(function(){
+      try { cbRender(); } catch(e){}
+      try { bbRender(); } catch(e){}
+      try { renderAll(); } catch(e){}
+      try { dmRender(); } catch(e){}
+      try { jeRender(); } catch(e){}
+      try { dbRenderTable(); } catch(e){}
+    }, 200);
+  }
+
+  window.authSignOut = async function() {
+    await window._sb.auth.signOut();
+    window._sbUser = null;
+    /* Hide app, show login */
+    var appShell = document.getElementById('app-shell');
+    if (appShell) appShell.style.display = 'none';
+    document.getElementById('auth-user-bar').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('auth-msg').textContent = '';
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
+    authShowTab('login');
+  };
+
+  /* ── On page load: check for existing session ── */
+  window.addEventListener('DOMContentLoaded', async function(){
+    /* Hide app shell until authenticated */
+    var appShell = document.getElementById('app-shell');
+    if (appShell) appShell.style.display = 'none';
+
+    try {
+      var sessionRes = await window._sb.auth.getSession();
+      var session = sessionRes.data && sessionRes.data.session;
+      if (session && session.user) {
+        await authOnLogin(session.user);
+      } else {
+        document.getElementById('auth-loading-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+      }
+    } catch(e) {
+      document.getElementById('auth-loading-screen').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+  });
 
 })();
 </script>

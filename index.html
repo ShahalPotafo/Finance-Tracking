@@ -4448,32 +4448,39 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
 
             <!-- Revenue from Customer -->
             <div class="ops-stmt-group-hdr">Revenue from Customer</div>
+            <div class="ops-stmt-col-hdr"><span>Item</span><span>Amount</span><span>Per Order</span></div>
             <div class="ops-stmt-rows" id="ops-stmt-rfc"></div>
             <div class="ops-stmt-subtotal-row">
               <span>Total – Revenue from Customer</span>
               <span id="ops-sub-rfc">0.00</span>
+              <span class="ops-sub-per" id="ops-sub-rfc-per">—</span>
             </div>
 
             <!-- Revenue from Vendor -->
             <div class="ops-stmt-group-hdr" style="margin-top:14px;">Revenue from Vendor</div>
+            <div class="ops-stmt-col-hdr"><span>Item</span><span>Amount</span><span>Per Order</span></div>
             <div class="ops-stmt-rows" id="ops-stmt-rfv"></div>
             <div class="ops-stmt-subtotal-row">
               <span>Total – Revenue from Vendor</span>
               <span id="ops-sub-rfv">0.00</span>
+              <span class="ops-sub-per" id="ops-sub-rfv-per">—</span>
             </div>
 
             <!-- Direct Income -->
             <div class="ops-stmt-group-hdr" style="margin-top:14px;">Direct Income</div>
+            <div class="ops-stmt-col-hdr"><span>Item</span><span>Amount</span><span>Per Order</span></div>
             <div class="ops-stmt-rows" id="ops-stmt-di"></div>
             <div class="ops-stmt-subtotal-row">
               <span>Total – Direct Income</span>
               <span id="ops-sub-di">0.00</span>
+              <span class="ops-sub-per" id="ops-sub-di-per">—</span>
             </div>
 
             <!-- Income Grand Total -->
             <div class="ops-stmt-grand-row ops-grand-income">
               <span>Income Grand Total</span>
               <span id="ops-grand-income">0.00</span>
+              <span class="ops-grand-per" id="ops-grand-income-per">—</span>
             </div>
           </div>
           </div><!-- /ops-income-col -->
@@ -4485,16 +4492,19 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
 
             <!-- Direct Expense -->
             <div class="ops-stmt-group-hdr">Direct Expense</div>
+            <div class="ops-stmt-col-hdr"><span>Item</span><span>Amount</span><span>Per Order</span></div>
             <div class="ops-stmt-rows" id="ops-stmt-de"></div>
             <div class="ops-stmt-subtotal-row">
               <span>Total – Direct Expense</span>
               <span id="ops-sub-de">0.00</span>
+              <span class="ops-sub-per" id="ops-sub-de-per">—</span>
             </div>
 
             <!-- Expense Grand Total -->
             <div class="ops-stmt-grand-row ops-grand-expense">
               <span>Expense Grand Total</span>
               <span id="ops-grand-expense">0.00</span>
+              <span class="ops-grand-per" id="ops-grand-expense-per">—</span>
             </div>
           </div>
           </div><!-- /ops-expense-col -->
@@ -4516,6 +4526,14 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
             <div class="ops-stmt-tally-row">
               <span class="ops-tally-lbl">Expense Grand Total</span>
               <span class="ops-tally-val ops-tally-expense" id="ops-tally-expense">0.00</span>
+            </div>
+            <div class="ops-stmt-tally-row" style="border-top:1px solid #1c1e2a;margin-top:6px;padding-top:6px;">
+              <span class="ops-tally-lbl" style="color:#a78bfa;">Total Per Order Income</span>
+              <span class="ops-tally-val" style="color:#a78bfa;" id="ops-tally-per-income">—</span>
+            </div>
+            <div class="ops-stmt-tally-row">
+              <span class="ops-tally-lbl" style="color:#a78bfa;">Total Per Order Expense</span>
+              <span class="ops-tally-val" style="color:#a78bfa;" id="ops-tally-per-expense">—</span>
             </div>
           </div>
 
@@ -9800,8 +9818,8 @@ window.shellNav = function(page) {
 }
 .ops-stmt-rows {}
 .ops-stmt-line {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 130px 130px;
   align-items: center;
   padding: 9px 20px 9px 32px;
   font-size: 0.88em;
@@ -9813,12 +9831,31 @@ window.shellNav = function(page) {
   font-family: 'DM Mono', monospace;
   font-size: 0.92em;
   color: #e4e6f2;
-  min-width: 110px;
   text-align: right;
 }
+.ops-stmt-line .ops-line-per {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85em;
+  color: #a78bfa;
+  text-align: right;
+}
+.ops-stmt-col-hdr {
+  display: grid;
+  grid-template-columns: 1fr 130px 130px;
+  align-items: center;
+  padding: 5px 20px 5px 32px;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #484d6a;
+  border-bottom: 1px solid rgba(28,30,42,0.5);
+}
+.ops-stmt-col-hdr span { text-align: right; }
+.ops-stmt-col-hdr span:first-child { text-align: left; }
 .ops-stmt-subtotal-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 130px 130px;
   align-items: center;
   padding: 9px 20px;
   font-size: 0.84em;
@@ -9828,15 +9865,21 @@ window.shellNav = function(page) {
   border-top: 1px solid #1c1e2a;
   font-family: 'Syne', sans-serif;
 }
-.ops-stmt-subtotal-row span:last-child {
+.ops-stmt-subtotal-row span {
   font-family: 'DM Mono', monospace;
   font-size: 0.95em;
-  min-width: 110px;
   text-align: right;
 }
+.ops-stmt-subtotal-row span:first-child {
+  font-family: 'Syne', sans-serif;
+  text-align: left;
+}
+.ops-stmt-subtotal-row .ops-sub-per {
+  color: #a78bfa;
+}
 .ops-stmt-grand-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 130px 130px;
   align-items: center;
   padding: 12px 20px;
   font-size: 0.9em;
@@ -9845,11 +9888,18 @@ window.shellNav = function(page) {
   font-family: 'Syne', sans-serif;
   letter-spacing: 0.3px;
 }
-.ops-stmt-grand-row span:last-child {
+.ops-stmt-grand-row span {
   font-family: 'DM Mono', monospace;
   font-size: 1.05em;
-  min-width: 110px;
   text-align: right;
+}
+.ops-stmt-grand-row span:first-child {
+  font-family: 'Syne', sans-serif;
+  text-align: left;
+}
+.ops-stmt-grand-row .ops-grand-per {
+  font-size: 0.92em;
+  color: #a78bfa;
 }
 .ops-grand-income { color: #5af0c8; }
 .ops-grand-expense { color: #f47c7c; }
@@ -10058,11 +10108,29 @@ window.shellNav = function(page) {
       totals[r.label] = (totals[r.label] || 0) + (r.amount || 0);
     });
 
-    /* Render a group section */
+    /* ── Total orders (deduplicated by date, max per date) ── */
+    var ordersByDate = {};
+    all.forEach(function(r) {
+      if (fromDate && r.date < fromDate) return;
+      if (toDate   && r.date > toDate)   return;
+      if ((r.orderCount || 0) > 0) {
+        ordersByDate[r.date] = Math.max(ordersByDate[r.date] || 0, r.orderCount);
+      }
+    });
+    var totalOrders = Object.values(ordersByDate).reduce(function(a,b){ return a+b; }, 0);
+
+    /* Helper: format Per Order value */
+    function fmtPer(amt) {
+      if (!totalOrders || totalOrders === 0) return '—';
+      return '₹' + opsFmt(amt / totalOrders);
+    }
+
+    /* Render a group section — returns { total, perTotal } */
     function renderGroup(def) {
-      var container = document.getElementById(def.containerId);
+      var container  = document.getElementById(def.containerId);
       var subtotalEl = document.getElementById(def.subtotalId);
-      if (!container || !subtotalEl) return 0;
+      var subtotalPerEl = document.getElementById(def.subtotalId + '-per');
+      if (!container || !subtotalEl) return { total: 0, perTotal: 0 };
 
       var html = '';
       var groupTotal = 0;
@@ -10072,30 +10140,36 @@ window.shellNav = function(page) {
         html += '<div class="ops-stmt-line">' +
           '<span>' + label + '</span>' +
           '<span class="ops-line-amt">₹' + opsFmt(amt) + '</span>' +
+          '<span class="ops-line-per">' + fmtPer(amt) + '</span>' +
         '</div>';
       });
       container.innerHTML = html;
       subtotalEl.textContent = '₹' + opsFmt(groupTotal);
-      return groupTotal;
+      if (subtotalPerEl) subtotalPerEl.textContent = fmtPer(groupTotal);
+      return { total: groupTotal, perTotal: totalOrders > 0 ? groupTotal / totalOrders : 0 };
     }
 
     /* Render income groups */
     var incomeGrandTotal = 0;
     INCOME_GROUPS.forEach(function(def) {
-      incomeGrandTotal += renderGroup(def);
+      incomeGrandTotal += renderGroup(def).total;
     });
 
     /* Render expense groups */
     var expenseGrandTotal = 0;
     EXPENSE_GROUPS.forEach(function(def) {
-      expenseGrandTotal += renderGroup(def);
+      expenseGrandTotal += renderGroup(def).total;
     });
 
     /* Grand totals */
-    var incomeEl  = document.getElementById('ops-grand-income');
-    var expenseEl = document.getElementById('ops-grand-expense');
-    if (incomeEl)  incomeEl.textContent  = '₹' + opsFmt(incomeGrandTotal);
-    if (expenseEl) expenseEl.textContent = '₹' + opsFmt(expenseGrandTotal);
+    var incomeEl    = document.getElementById('ops-grand-income');
+    var expenseEl   = document.getElementById('ops-grand-expense');
+    var incomePerEl = document.getElementById('ops-grand-income-per');
+    var expensePerEl= document.getElementById('ops-grand-expense-per');
+    if (incomeEl)    incomeEl.textContent    = '₹' + opsFmt(incomeGrandTotal);
+    if (expenseEl)   expenseEl.textContent   = '₹' + opsFmt(expenseGrandTotal);
+    if (incomePerEl) incomePerEl.textContent = fmtPer(incomeGrandTotal);
+    if (expensePerEl)expensePerEl.textContent= fmtPer(expenseGrandTotal);
 
     /* Profit / Loss */
     var pl      = incomeGrandTotal - expenseGrandTotal;
@@ -10106,53 +10180,41 @@ window.shellNav = function(page) {
       plBlock.classList.remove('pl-profit','pl-loss','pl-zero');
       if (pl > 0) {
         plBlock.classList.add('pl-profit');
-        plLabel.textContent = '🟢 Gross Revenue (Profit)';
+        plLabel.textContent = '\uD83D\uDFE2 Gross Revenue (Profit)';
       } else if (pl < 0) {
         plBlock.classList.add('pl-loss');
-        plLabel.textContent = '🔴 Gross Loss';
+        plLabel.textContent = '\uD83D\uDD34 Gross Loss';
       } else {
         plBlock.classList.add('pl-zero');
         plLabel.textContent = 'Break-even';
       }
-      plValue.textContent = '₹' + opsFmt(Math.abs(pl));
+      plValue.textContent = '\u20B9' + opsFmt(Math.abs(pl));
     }
 
     /* Tally Check */
-    var tallyInc = document.getElementById('ops-tally-income');
-    var tallyExp = document.getElementById('ops-tally-expense');
-    if (tallyInc) tallyInc.textContent = '₹' + opsFmt(incomeGrandTotal);
-    if (tallyExp) tallyExp.textContent = '₹' + opsFmt(expenseGrandTotal);
+    var tallyInc    = document.getElementById('ops-tally-income');
+    var tallyExp    = document.getElementById('ops-tally-expense');
+    var tallyPerInc = document.getElementById('ops-tally-per-income');
+    var tallyPerExp = document.getElementById('ops-tally-per-expense');
+    if (tallyInc)    tallyInc.textContent    = '\u20B9' + opsFmt(incomeGrandTotal);
+    if (tallyExp)    tallyExp.textContent    = '\u20B9' + opsFmt(expenseGrandTotal);
+    if (tallyPerInc) tallyPerInc.textContent = fmtPer(incomeGrandTotal);
+    if (tallyPerExp) tallyPerExp.textContent = fmtPer(expenseGrandTotal);
 
     /* KPI strip sync */
     var kpiIncome = document.getElementById('ops-kpi-income');
     var kpiExp    = document.getElementById('ops-kpi-expenditure');
     var kpiNet    = document.getElementById('ops-kpi-net');
-    if (kpiIncome) kpiIncome.textContent = '₹' + opsFmt(incomeGrandTotal);
-    if (kpiExp)    kpiExp.textContent    = '₹' + opsFmt(expenseGrandTotal);
+    if (kpiIncome) kpiIncome.textContent = '\u20B9' + opsFmt(incomeGrandTotal);
+    if (kpiExp)    kpiExp.textContent    = '\u20B9' + opsFmt(expenseGrandTotal);
     if (kpiNet) {
-      kpiNet.textContent = '₹' + opsFmt(Math.abs(pl));
+      kpiNet.textContent = '\u20B9' + opsFmt(Math.abs(pl));
       kpiNet.style.color = pl > 0 ? '#5af0c8' : pl < 0 ? '#f47c7c' : '#a78bfa';
     }
 
     /* Orders KPI */
     var kpiOrders = document.getElementById('ops-kpi-orders');
-    if (kpiOrders) {
-      var totalOrders = all.reduce(function(s, r) {
-        if ((fromDate && r.date < fromDate) || (toDate && r.date > toDate)) return s;
-        return s + (r.orderCount || 0);
-      }, 0);
-      /* Avoid double-counting: take max per date */
-      var ordersByDate = {};
-      all.forEach(function(r) {
-        if (fromDate && r.date < fromDate) return;
-        if (toDate   && r.date > toDate)   return;
-        if ((r.orderCount || 0) > 0) {
-          ordersByDate[r.date] = Math.max(ordersByDate[r.date] || 0, r.orderCount);
-        }
-      });
-      var ordersSum = Object.values(ordersByDate).reduce(function(a,b){ return a+b; }, 0);
-      kpiOrders.textContent = ordersSum > 0 ? ordersSum : '0';
-    }
+    if (kpiOrders) kpiOrders.textContent = totalOrders > 0 ? totalOrders : '0';
   }
 
   /* Wire render + badge to nav */

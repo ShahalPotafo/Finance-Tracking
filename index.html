@@ -8,16 +8,22 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- SUPABASE CLOUD SYNC LAYER -->
+<!-- ═══════════════════════════════════════════════════
+     SUPABASE CLOUD SYNC LAYER  v2
+     - Intercepts localStorage to auto-push on save
+     - Blocks DOMContentLoaded until cloud pull done
+═══════════════════════════════════════════════════ -->
 <script>
 (function(){
   'use strict';
+
   var SB_URL = 'https://nenbrcfcrylazvfahxvj.supabase.co';
   var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lbmJyY2ZjcnlsYXp2ZmFoeHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTQ4NDQsImV4cCI6MjA5NjUzMDg0NH0.kxEWZnm9NPFZ54BfAzFM2_zUQbk-PyMEZ8Irn9I4Gf8';
   var sb = window.supabase.createClient(SB_URL, SB_KEY);
-  window._sb = sb;
+  window._sb   = sb;
   window._sbUser = null;
 
+  /* All keys this app uses */
   var TRACKED_KEYS = [
     'potafo_cb_v3','potafo_cb_ob_v3',
     'potafo_bb_v3','potafo_bb_ob_v3',
@@ -27,6 +33,11 @@
     'potafo_ds_settings_v1','potafo_ds_backups_v1'
   ];
 
+  /* ── Raw localStorage (bypass interceptor) ── */
+  var _rawSet    = Storage.prototype.setItem.bind(localStorage);
+  var _rawRemove = Storage.prototype.removeItem.bind(localStorage);
+
+  /* ── Push one key to Supabase ── */
   async function sbPush(key, value) {
     if (!window._sbUser) return;
     try {
@@ -34,42 +45,83 @@
         { user_id: window._sbUser.id, key: key, value: value },
         { onConflict: 'user_id,key' }
       );
-    } catch(e) { console.warn('sbPush', key, e); }
+    } catch(e) { console.warn('[SB] push failed:', key, e); }
   }
 
+  /* ── Delete one key from Supabase ── */
   async function sbDelete(key) {
     if (!window._sbUser) return;
     try {
       await sb.from('app_storage').delete()
-        .eq('user_id', window._sbUser.id).eq('key', key);
-    } catch(e) { console.warn('sbDelete', key, e); }
+        .eq('user_id', window._sbUser.id)
+        .eq('key', key);
+    } catch(e) { console.warn('[SB] delete failed:', key, e); }
   }
 
+  /* ── Pull ALL cloud data into localStorage (raw, no re-push) ── */
   window._sbPullAll = async function() {
     if (!window._sbUser) return;
     try {
       var uid = window._sbUser.id;
       var res = await sb.from('app_storage').select('key,value').eq('user_id', uid);
-      if (res.data) res.data.forEach(function(r){ localStorage._origSet(r.key, r.value); });
-    } catch(e) { console.warn('sbPullAll', e); }
+      if (res.error) { console.warn('[SB] pull error:', res.error); return; }
+      if (res.data && res.data.length > 0) {
+        res.data.forEach(function(row) {
+          _rawSet(row.key, row.value);   /* write directly, skip interceptor */
+        });
+        console.log('[SB] pulled', res.data.length, 'keys from cloud');
+      } else {
+        console.log('[SB] no cloud data found for user');
+      }
+    } catch(e) { console.warn('[SB] pullAll exception:', e); }
   };
 
-  /* Intercept localStorage */
-  var _origSet    = localStorage.setItem.bind(localStorage);
-  var _origRemove = localStorage.removeItem.bind(localStorage);
-  localStorage._origSet = _origSet;
-
-  localStorage.setItem = function(key, value) {
-    _origSet(key, value);
-    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) sbPush(key, value);
+  /* ── Intercept localStorage writes to auto-push ── */
+  Storage.prototype.setItem = function(key, value) {
+    _rawSet(key, value);
+    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) {
+      sbPush(key, value);
+    }
   };
-  localStorage.removeItem = function(key) {
-    _origRemove(key);
-    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) sbDelete(key);
+  Storage.prototype.removeItem = function(key) {
+    _rawRemove(key);
+    if (TRACKED_KEYS.indexOf(key) !== -1 || key.indexOf('potafo_bb') === 0) {
+      sbDelete(key);
+    }
   };
 
-  window._sbPush   = sbPush;
-  window._sbDelete = sbDelete;
+  window._sbPush      = sbPush;
+  window._sbDelete    = sbDelete;
+  window._sbRawSet    = _rawSet;
+
+  /* ── DOMContentLoaded gate ──
+     We intercept addEventListener so every module's DOMContentLoaded
+     callback is queued. After cloud pull, we fire them all at once.
+     This ensures modules read localStorage AFTER cloud data is loaded.
+  ── */
+  var _dclQueue    = [];   /* queued DOMContentLoaded handlers */
+  var _dclUnlocked = false;
+  var _origAEL     = EventTarget.prototype.addEventListener;
+
+  EventTarget.prototype.addEventListener = function(type, fn, opts) {
+    if ((this === window || this === document) && type === 'DOMContentLoaded' && !_dclUnlocked) {
+      _dclQueue.push({ target: this, fn: fn, opts: opts });
+      return;
+    }
+    _origAEL.call(this, type, fn, opts);
+  };
+
+  window._sbUnlockDCL = function() {
+    _dclUnlocked = true;
+    /* Restore original addEventListener */
+    EventTarget.prototype.addEventListener = _origAEL;
+    /* Fire all queued handlers */
+    _dclQueue.forEach(function(item) {
+      try { item.fn({ type: 'DOMContentLoaded', target: item.target }); } catch(e) { console.warn('[SB] DCL handler error', e); }
+    });
+    _dclQueue = [];
+  };
+
 })();
 </script>
 
@@ -10541,25 +10593,42 @@ window.shellNav = function(page) {
 
   async function authOnLogin(user) {
     window._sbUser = user;
-    /* Pull all cloud data into localStorage */
+
+    /* 1. Pull ALL cloud data into localStorage FIRST */
     await window._sbPullAll();
-    /* Show the app */
+
+    /* 2. Unlock DOMContentLoaded — fires all queued module init handlers
+          NOW that localStorage has cloud data in it */
+    if (typeof window._sbUnlockDCL === 'function') {
+      window._sbUnlockDCL();
+    }
+
+    /* 3. Show the app shell */
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('auth-loading-screen').style.display = 'none';
     var appShell = document.getElementById('app-shell');
     if (appShell) appShell.style.display = 'flex';
-    /* Show user bar */
+
+    /* 4. Show user bar */
     document.getElementById('auth-user-email').textContent = user.email;
     document.getElementById('auth-user-bar').style.display = 'flex';
-    /* Re-render all modules with cloud data */
+
+    /* 5. Re-render all modules to show cloud data in UI
+          Small delay lets the DOM settle after showing the app shell */
     setTimeout(function(){
-      try { cbRender(); } catch(e){}
-      try { bbRender(); } catch(e){}
-      try { renderAll(); } catch(e){}
-      try { dmRender(); } catch(e){}
-      try { jeRender(); } catch(e){}
-      try { dbRenderTable(); } catch(e){}
-    }, 200);
+      try { cbRender();       } catch(e){}
+      try { bbRender();       } catch(e){}
+      try { renderAll();      } catch(e){}
+      try { dmRenderAll();    } catch(e){}
+      try { jeRenderGrid();   } catch(e){}
+      try { jeRenderSaved();  } catch(e){}
+      try { dbRenderTable();  } catch(e){}
+      try { mlRenderMainGroups(); } catch(e){}
+      try { mlRenderGroups(); } catch(e){}
+      try { mlRenderLedgers(); } catch(e){}
+      try { bbPopulateBankDropdown(); bbRender(); } catch(e){}
+      try { cbPopulateDeptDropdown(); cbRender(); } catch(e){}
+    }, 300);
   }
 
   window.authSignOut = async function() {
@@ -10576,26 +10645,47 @@ window.shellNav = function(page) {
     authShowTab('login');
   };
 
-  /* ── On page load: check for existing session ── */
-  window.addEventListener('DOMContentLoaded', async function(){
-    /* Hide app shell until authenticated */
-    var appShell = document.getElementById('app-shell');
-    if (appShell) appShell.style.display = 'none';
+  /* ── On page load: check for existing session ──
+     IMPORTANT: use raw addEventListener (not intercepted) so this
+     fires immediately on DOMContentLoaded, before modules run.
+  ── */
+  window._sbRawAEL = EventTarget.prototype.addEventListener
+    ? EventTarget.prototype.addEventListener.bind(window)
+    : window.addEventListener.bind(window);
 
-    try {
-      var sessionRes = await window._sb.auth.getSession();
-      var session = sessionRes.data && sessionRes.data.session;
-      if (session && session.user) {
-        await authOnLogin(session.user);
-      } else {
+  /* We store this before the interceptor so it's always the original */
+  (function attachAuthBoot() {
+    var origAEL = window._origAEL_boot || EventTarget.prototype.addEventListener;
+    /* Use a script-load-time direct attach since addEventListener is intercepted */
+    var bootFn = async function(){
+      /* Hide app shell until authenticated */
+      var appShell = document.getElementById('app-shell');
+      if (appShell) appShell.style.display = 'none';
+      try {
+        var sessionRes = await window._sb.auth.getSession();
+        var session = sessionRes.data && sessionRes.data.session;
+        if (session && session.user) {
+          await authOnLogin(session.user);
+        } else {
+          document.getElementById('auth-loading-screen').style.display = 'none';
+          document.getElementById('auth-screen').style.display = 'flex';
+          /* No session: still unlock DCL so page doesn't hang */
+          if (typeof window._sbUnlockDCL === 'function') window._sbUnlockDCL();
+        }
+      } catch(e) {
+        console.warn('[SB] session check failed', e);
         document.getElementById('auth-loading-screen').style.display = 'none';
         document.getElementById('auth-screen').style.display = 'flex';
+        if (typeof window._sbUnlockDCL === 'function') window._sbUnlockDCL();
       }
-    } catch(e) {
-      document.getElementById('auth-loading-screen').style.display = 'none';
-      document.getElementById('auth-screen').style.display = 'flex';
+    };
+    /* Attach using the truly original addEventListener stored in sync layer */
+    if (document.readyState === 'loading') {
+      window._sbRawAEL('DOMContentLoaded', bootFn);
+    } else {
+      bootFn();
     }
-  });
+  })();
 
 })();
 </script>

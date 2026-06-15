@@ -2039,6 +2039,10 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
         <span class="nav-icon">🏠</span>
         <span class="nav-label">Dashboard</span>
       </div>
+      <div class="nav-item" id="nav-upload" onclick="shellNav('upload')">
+        <span class="nav-icon">⬆</span>
+        <span class="nav-label">Save Data</span>
+      </div>
 
       <div class="nav-group-label">Applications</div>
       <div class="nav-item" id="nav-cashbook" onclick="shellNav('cashbook')">
@@ -4791,6 +4795,938 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
         </div>
 
     </div><!-- /page-opstatement -->
+
+    <!-- UPLOAD DATA -->
+    <div class="page" id="page-upload" style="padding:32px;max-width:720px;">
+      <div class="set-title">⬆ Save Data</div>
+
+      <style>
+        .upl-field-label {
+          display:block;font-size:10px;font-weight:700;
+          color:var(--shell-muted);letter-spacing:1.2px;
+          text-transform:uppercase;margin-bottom:7px;
+        }
+        .upl-select, .upl-date-input {
+          width:100%;padding:10px 13px;
+          background:#09090d;border:1px solid var(--shell-border);
+          border-radius:8px;color:var(--shell-text);
+          font-family:'DM Mono',monospace;font-size:13px;
+          outline:none;transition:border-color .18s;
+          appearance:none;-webkit-appearance:none;
+          box-sizing:border-box;
+        }
+        .upl-select:focus, .upl-date-input:focus { border-color:var(--shell-accent); }
+        .upl-select option { background:#0e0f14; }
+        .upl-select-wrap { position:relative; }
+        .upl-select-wrap::after {
+          content:'▾';position:absolute;right:13px;top:50%;
+          transform:translateY(-50%);color:var(--shell-muted);
+          pointer-events:none;font-size:12px;
+        }
+        .upl-date-input::-webkit-calendar-picker-indicator { filter:invert(.5); cursor:pointer; }
+      </style>
+
+      <div class="set-card">
+        <div class="set-card-title">Import File</div>
+
+        <!-- Row: Upload Type + Date -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+          <div>
+            <label class="upl-field-label" for="upload-type-sel">Upload Type</label>
+            <div class="upl-select-wrap">
+              <select class="upl-select" id="upload-type-sel">
+                <option value="" disabled selected>Select type…</option>
+                <option value="Order Summary">Order Summary</option>
+                <option value="Merchant Transaction">Merchant Transaction</option>
+                <option value="Razorpay (Combined Statement)">Razorpay (Combined Statement)</option>
+                <option value="DE Salary">DE Salary</option>
+                <option value="Vendor Deduction">Vendor Deduction</option>
+                <option value="Coupon">Coupon</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="upl-field-label" for="upload-date-inp">Date</label>
+            <input type="date" class="upl-date-input" id="upload-date-inp">
+          </div>
+        </div>
+
+        <!-- Drop zone -->
+        <label class="upl-field-label">Upload File</label>
+        <div id="upload-dropzone"
+          onclick="document.getElementById('upload-file-input').click()"
+          ondragover="uploadDragOver(event)"
+          ondragleave="uploadDragLeave(event)"
+          ondrop="uploadDrop(event)"
+          style="
+            border:2px dashed var(--shell-border);
+            border-radius:10px;padding:36px 24px;
+            text-align:center;cursor:pointer;
+            transition:border-color .18s,background .18s;
+            margin-bottom:18px;
+          ">
+          <div style="font-size:34px;margin-bottom:10px;line-height:1;">📂</div>
+          <div style="font-size:13px;font-weight:700;color:var(--shell-text);margin-bottom:6px;">
+            Click to browse or drag &amp; drop
+          </div>
+          <div style="font-size:11px;color:var(--shell-muted);letter-spacing:.5px;">
+            Supported: XLSX, XLS, CSV, TSV, ODS
+          </div>
+        </div>
+
+        <input type="file" id="upload-file-input"
+          accept=".xlsx,.xls,.csv,.tsv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
+          style="display:none"
+          onchange="uploadHandleFile(this.files[0])">
+
+        <!-- File info -->
+        <div id="upload-file-info" style="display:none;margin-bottom:14px;">
+          <div class="set-row">
+            <span class="set-lbl">File Name</span>
+            <span class="set-val" id="upload-fname">—</span>
+          </div>
+          <div class="set-row">
+            <span class="set-lbl">Format</span>
+            <span class="set-val accent" id="upload-ftype">—</span>
+          </div>
+          <div class="set-row">
+            <span class="set-lbl">Size</span>
+            <span class="set-val" id="upload-fsize">—</span>
+          </div>
+        </div>
+
+        <!-- Column Mapping (Order Summary only) -->
+        <div id="upload-col-mapping" style="display:none;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--shell-accent);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--shell-border);">
+            Column Mapping
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-extra-value" style="margin-bottom:0;">Extra Value</label>
+                <span id="upl-sum-extra-value" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-extra-value" onchange="uplCalcSum('extra-value')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-delivery-charge" style="margin-bottom:0;">Delivery Charge</label>
+                <span id="upl-sum-delivery-charge" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-delivery-charge" onchange="uplCalcSum('delivery-charge')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-platform-fee" style="margin-bottom:0;">Platform Fee</label>
+                <span id="upl-sum-platform-fee" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-platform-fee" onchange="uplCalcSum('platform-fee')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-ec-to-staff" style="margin-bottom:0;">EC to Staff</label>
+                <span id="upl-sum-ec-to-staff" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-ec-to-staff" onchange="uplCalcSum('ec-to-staff')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" style="margin-bottom:0;">No. of Orders</label>
+                <span id="upl-sum-no-of-orders" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div style="padding:10px 13px;background:#09090d;border:1px solid var(--shell-border);border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;color:var(--shell-muted);">
+                Auto — last value in Column A
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-order-total" style="margin-bottom:0;">Order Total</label>
+                <span id="upl-sum-order-total" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-order-total" onchange="uplCalcSum('order-total')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column Mapping (Merchant Transaction only) -->
+        <div id="upload-col-mapping-mt" style="display:none;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--shell-accent);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--shell-border);">
+            Column Mapping
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-transaction-charge" style="margin-bottom:0;">Transaction Charge</label>
+                <span id="upl-sum-transaction-charge" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-transaction-charge" onchange="uplCalcSum('transaction-charge')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+                <label class="upl-field-label" for="upl-map-service-charge" style="margin-bottom:0;">Service Charge</label>
+                <span id="upl-sum-service-charge" style="display:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--shell-accent);background:rgba(90,240,200,0.08);border:1px solid rgba(90,240,200,0.2);border-radius:5px;padding:2px 8px;white-space:nowrap;"></span>
+              </div>
+              <div class="upl-select-wrap">
+                <select class="upl-select" id="upl-map-service-charge" onchange="uplCalcSum('service-charge')">
+                  <option value="">— Select column —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DE Salary Preview -->
+        <div id="upload-de-preview" style="display:none;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--shell-accent);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--shell-border);">
+            Calculated Values
+          </div>
+          <div style="background:rgba(255,255,255,0.02);border:1px solid var(--shell-border);border-radius:8px;padding:10px 14px;max-width:50%;">
+            <div style="font-size:11px;color:#a0a5c0;margin-bottom:4px;">DE Salary</div>
+            <div id="upload-de-salary" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--shell-text);">₹0.00</div>
+          </div>
+        </div>
+
+        <!-- Razorpay Combined Statement Preview -->
+        <div id="upload-rz-preview" style="display:none;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--shell-accent);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--shell-border);">
+            Calculated Values
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--shell-border);border-radius:8px;padding:10px 14px;">
+              <div style="font-size:11px;color:#a0a5c0;margin-bottom:4px;">Razorpay Fee</div>
+              <div id="upload-rz-fee" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--shell-text);">₹0.00</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--shell-border);border-radius:8px;padding:10px 14px;">
+              <div style="font-size:11px;color:#a0a5c0;margin-bottom:4px;">Tax</div>
+              <div id="upload-rz-tax" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--shell-text);">₹0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vendor Deduction Preview -->
+        <div id="upload-vd-preview" style="display:none;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--shell-accent);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--shell-border);">
+            Calculated Values
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--shell-border);border-radius:8px;padding:10px 14px;">
+              <div style="font-size:11px;color:#a0a5c0;margin-bottom:4px;">Fine Collection</div>
+              <div id="upload-vd-fine" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--shell-text);">₹0.00</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--shell-border);border-radius:8px;padding:10px 14px;">
+              <div style="font-size:11px;color:#a0a5c0;margin-bottom:4px;">Cancellation Charge</div>
+              <div id="upload-vd-cancel" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--shell-text);">₹0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div id="upload-status" style="font-family:'DM Mono',monospace;font-size:12px;min-height:18px;margin-bottom:14px;"></div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="upload-btn-upload"
+            onclick="uploadSubmit()"
+            style="display:none;padding:9px 22px;background:var(--shell-accent);color:#09090d;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;cursor:pointer;transition:opacity .18s;"
+            onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            Upload File
+          </button>
+          <button id="upload-btn-clear"
+            onclick="uploadClear()"
+            style="display:none;padding:9px 18px;background:transparent;color:var(--shell-muted);border:1px solid var(--shell-border);border-radius:8px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:color .18s;"
+            onmouseover="this.style.color='var(--shell-text)'" onmouseout="this.style.color='var(--shell-muted)'">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Upload history -->
+      <div class="set-card" id="upload-history-card" style="display:none;">
+        <div class="set-card-title">Recent Uploads</div>
+        <div id="upload-history-list"></div>
+      </div>
+    </div>
+
+    <script>
+    (function(){
+      var _uploadFile = null;
+      var _uploadRows = [];   /* all data rows from parsed file */
+      var _uploadHeaders = [];
+      var _uploadHistory = JSON.parse(localStorage.getItem('potafo_upload_history_v1') || '[]');
+
+      /* Default date to today */
+      (function(){
+        var d = new Date();
+        var pad = function(n){ return String(n).padStart(2,'0'); };
+        document.getElementById('upload-date-inp').value =
+          d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+      })();
+
+      /* Watch Upload Type change → toggle column mapping */
+      document.getElementById('upload-type-sel').addEventListener('change', function(){
+        refreshMappingVisibility();
+      });
+      document.getElementById('upload-date-inp').addEventListener('change', function(){
+        if (isRazorpay() && _uploadFile) rzComputeAndShow();
+      });
+
+      function isOrderSummary(){
+        return document.getElementById('upload-type-sel').value === 'Order Summary';
+      }
+      function isMerchantTransaction(){
+        return document.getElementById('upload-type-sel').value === 'Merchant Transaction';
+      }
+      function isRazorpay(){
+        return document.getElementById('upload-type-sel').value === 'Razorpay (Combined Statement)';
+      }
+      function isDESalary(){
+        return document.getElementById('upload-type-sel').value === 'DE Salary';
+      }
+      function isVendorDeduction(){
+        return document.getElementById('upload-type-sel').value === 'Vendor Deduction';
+      }
+      function rzNormDate(v){
+        if (v === undefined || v === null || v === '') return '';
+        if (Object.prototype.toString.call(v) === '[object Date]'){
+          var pad=function(n){return String(n).padStart(2,'0');};
+          return v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate());
+        }
+        var s = String(v).trim();
+        var m;
+        /* YYYY-MM-DD or YYYY/MM/DD */
+        if ((m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/))) {
+          return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+        }
+        /* DD-MM-YYYY or DD/MM/YYYY */
+        if ((m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/))) {
+          return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+        }
+        /* Excel serial number */
+        if (/^\d+(\.\d+)?$/.test(s)) {
+          var epoch = new Date(Date.UTC(1899, 11, 30));
+          var d = new Date(epoch.getTime() + parseFloat(s) * 86400000);
+          var pad2=function(n){return String(n).padStart(2,'0');};
+          return d.getUTCFullYear()+'-'+pad2(d.getUTCMonth()+1)+'-'+pad2(d.getUTCDate());
+        }
+        return s;
+      }
+
+      function refreshMappingVisibility(){
+        document.getElementById('upload-col-mapping').style.display    = (isOrderSummary()       && _uploadFile) ? '' : 'none';
+        document.getElementById('upload-col-mapping-mt').style.display = (isMerchantTransaction() && _uploadFile) ? '' : 'none';
+        document.getElementById('upload-rz-preview').style.display     = (isRazorpay()            && _uploadFile) ? '' : 'none';
+        document.getElementById('upload-de-preview').style.display     = (isDESalary()            && _uploadFile) ? '' : 'none';
+        document.getElementById('upload-vd-preview').style.display     = (isVendorDeduction()     && _uploadFile) ? '' : 'none';
+        if (isRazorpay() && _uploadFile) rzComputeAndShow();
+        if (isDESalary() && _uploadFile) deComputeAndShow();
+        if (isVendorDeduction() && _uploadFile) vdComputeAndShow();
+      }
+
+      /* Vendor Deduction: Fine Collection = sum of col E where col D = "Fines";
+         Cancellation Charge = sum of col E where col D = "CANCELATION" */
+      function vdComputeValues(){
+        var fineTotal = 0, cancelTotal = 0;
+        _uploadRows.forEach(function(row){
+          var d = String(row[3] === undefined ? '' : row[3]).trim().toLowerCase();
+          var e = parseFloat(String(row[4] === undefined ? '' : row[4]).replace(/[,₹\s]/g,''));
+          if (isNaN(e)) e = 0;
+          if (d === 'fines') fineTotal += e;
+          else if (d === 'cancelation' || d === 'cancellation') cancelTotal += e;
+        });
+        return { fineCollection: fineTotal, cancellationCharge: cancelTotal };
+      }
+      function vdComputeAndShow(){
+        var v = vdComputeValues();
+        document.getElementById('upload-vd-fine').textContent   = fmtINR(v.fineCollection);
+        document.getElementById('upload-vd-cancel').textContent = fmtINR(v.cancellationCharge);
+      }
+
+      function deComputeAndShow(){
+        var total = 0;
+        _uploadRows.forEach(function(row){
+          var v = parseFloat(String(row[16] === undefined ? '' : row[16]).replace(/[,₹\s]/g,'')); /* column Q */
+          if (!isNaN(v)) total += v;
+        });
+        document.getElementById('upload-de-salary').textContent = fmtINR(total / 2);
+      }
+
+      function fmtINR(n){
+        return '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function rzComputeAndShow(){
+        var udate = document.getElementById('upload-date-inp').value;
+        var feeTotal = 0, taxTotal = 0;
+        _uploadRows.forEach(function(row){
+          var rawDate = row[10]; /* column K */
+          if (rawDate === undefined || rawDate === '' || rawDate === null) return;
+          var rowDate = rzNormDate(rawDate);
+          if (rowDate !== udate) return;
+          var g = parseFloat(String(row[6] === undefined ? '' : row[6]).replace(/[,₹\s]/g,''));
+          var h = parseFloat(String(row[7] === undefined ? '' : row[7]).replace(/[,₹\s]/g,''));
+          if (isNaN(g)) g = 0;
+          if (isNaN(h)) h = 0;
+          feeTotal += (g - h);
+          taxTotal += h;
+        });
+        document.getElementById('upload-rz-fee').textContent = fmtINR(feeTotal);
+        document.getElementById('upload-rz-tax').textContent = fmtINR(taxTotal);
+      }
+
+      var MAP_IDS_OS = [
+        'upl-map-extra-value',
+        'upl-map-delivery-charge',
+        'upl-map-platform-fee',
+        'upl-map-ec-to-staff',
+        'upl-map-order-total'
+      ];
+      var MAP_IDS_MT = [
+        'upl-map-transaction-charge',
+        'upl-map-service-charge'
+      ];
+      var MAP_IDS = MAP_IDS_OS.concat(MAP_IDS_MT);
+
+      var SUM_IDS = [
+        'upl-sum-extra-value',
+        'upl-sum-delivery-charge',
+        'upl-sum-platform-fee',
+        'upl-sum-ec-to-staff',
+        'upl-sum-no-of-orders',
+        'upl-sum-order-total',
+        'upl-sum-transaction-charge',
+        'upl-sum-service-charge'
+      ];
+
+      /* Calculate and display No. of Orders = last non-blank value in column A */
+      function uplCalcNoOfOrders(){
+        var chip = document.getElementById('upl-sum-no-of-orders');
+        var last = '';
+        for (var i = _uploadRows.length - 1; i >= 0; i--) {
+          var v = String(_uploadRows[i][0] === undefined ? '' : _uploadRows[i][0]).trim();
+          if (v) { last = v; break; }
+        }
+        if (last) {
+          chip.textContent = last;
+          chip.style.display = '';
+        } else {
+          chip.style.display = 'none';
+        }
+      }
+
+      /* Calculate and display sum for a mapped field */
+      window.uplCalcSum = function(key){
+        var selId = 'upl-map-' + key;
+        var sumId = 'upl-sum-' + key;
+        var col   = document.getElementById(selId).value;
+        var chip  = document.getElementById(sumId);
+        if (!col || !_uploadHeaders.length) { chip.style.display = 'none'; return; }
+        var colIdx = _uploadHeaders.indexOf(col);
+        if (colIdx === -1) { chip.style.display = 'none'; return; }
+        var total = 0;
+        _uploadRows.forEach(function(row){
+          /* Skip rows where column A (index 0) is blank */
+          var colA = String(row[0] === undefined ? '' : row[0]).trim();
+          if (!colA) return;
+          var v = parseFloat(String(row[colIdx]).replace(/[,₹\s]/g,''));
+          if (!isNaN(v)) total += v;
+        });
+        chip.textContent = '₹' + total.toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+        chip.style.display = '';
+      };
+
+      function populateMappingDropdowns(headers){
+        var activeIds = isOrderSummary() ? MAP_IDS_OS : (isMerchantTransaction() ? MAP_IDS_MT : []);
+        activeIds.forEach(function(id){
+          var sel = document.getElementById(id);
+          var prev = sel.value;
+          sel.innerHTML = '<option value="">— Select column —</option>';
+          headers.forEach(function(h){
+            var opt = document.createElement('option');
+            opt.value = h; opt.textContent = h;
+            if (h === prev) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        });
+        /* Recalc any already-selected columns */
+        if (isOrderSummary()) {
+          ['extra-value','delivery-charge','platform-fee','ec-to-staff','order-total'].forEach(function(k){ uplCalcSum(k); });
+          uplCalcNoOfOrders();
+        } else if (isMerchantTransaction()) {
+          ['transaction-charge','service-charge'].forEach(function(k){ uplCalcSum(k); });
+        }
+      }
+
+      function clearMappingDropdowns(){
+        MAP_IDS.forEach(function(id){
+          document.getElementById(id).innerHTML = '<option value="">— Select column —</option>';
+        });
+        SUM_IDS.forEach(function(id){ document.getElementById(id).style.display = 'none'; });
+        _uploadRows = []; _uploadHeaders = [];
+      }
+
+      /* Parse headers + all data rows from the file using SheetJS */
+      function parseFile(file, cb){
+        var reader = new FileReader();
+        var name = file.name.toLowerCase();
+        var isCsv = name.endsWith('.csv') || name.endsWith('.tsv');
+        reader.onload = function(e){
+          try {
+            var data = e.target.result;
+            var wb = isCsv
+              ? XLSX.read(data, { type:'string' })
+              : XLSX.read(new Uint8Array(data), { type:'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+            var headers = (rows[0] || []).map(function(h){ return String(h).trim(); }).filter(Boolean);
+            var dataRows = rows.slice(1);
+            cb(headers, dataRows);
+          } catch(err){ cb([], []); }
+        };
+        if (isCsv) reader.readAsText(file);
+        else        reader.readAsArrayBuffer(file);
+      }
+
+      function fmtBytes(b){
+        return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(2)+' MB';
+      }
+      function ext(name){ return (name.split('.').pop()||'').toUpperCase(); }
+
+      window.uploadDragOver = function(e){
+        e.preventDefault();
+        var dz = document.getElementById('upload-dropzone');
+        dz.style.borderColor = 'var(--shell-accent)';
+        dz.style.background  = 'rgba(90,240,200,0.05)';
+      };
+      window.uploadDragLeave = function(e){
+        var dz = document.getElementById('upload-dropzone');
+        dz.style.borderColor = 'var(--shell-border)';
+        dz.style.background  = '';
+      };
+      window.uploadDrop = function(e){
+        e.preventDefault();
+        uploadDragLeave(e);
+        var f = e.dataTransfer.files[0];
+        if (f) uploadHandleFile(f);
+      };
+      window.uploadHandleFile = function(f){
+        if (!f) return;
+        _uploadFile = f;
+        document.getElementById('upload-fname').textContent = f.name;
+        document.getElementById('upload-ftype').textContent = ext(f.name);
+        document.getElementById('upload-fsize').textContent = fmtBytes(f.size);
+        document.getElementById('upload-file-info').style.display = '';
+        document.getElementById('upload-btn-upload').style.display = '';
+        document.getElementById('upload-btn-clear').style.display  = '';
+        setStatus('','');
+        if (isOrderSummary() || isMerchantTransaction() || isRazorpay() || isDESalary() || isVendorDeduction()) {
+          parseFile(f, function(headers, dataRows){
+            _uploadHeaders = headers;
+            _uploadRows    = dataRows;
+            if (headers.length) populateMappingDropdowns(headers);
+            else                clearMappingDropdowns();
+            refreshMappingVisibility();
+          });
+        } else {
+          refreshMappingVisibility();
+        }
+      };
+      function setStatus(msg, color){
+        var s = document.getElementById('upload-status');
+        s.textContent = msg;
+        s.style.color = color || 'var(--shell-muted)';
+      }
+      window.uploadSubmit = function(){
+        if (!_uploadFile) return;
+        var utype = document.getElementById('upload-type-sel').value;
+        var udate = document.getElementById('upload-date-inp').value;
+        if (!utype){ setStatus('⚠ Please select an upload type.', '#f0a15a'); return; }
+        if (!udate){ setStatus('⚠ Please select a date.', '#f0a15a'); return; }
+        setStatus('Saving…', 'var(--shell-muted)');
+        var btn = document.getElementById('upload-btn-upload');
+        btn.disabled = true; btn.style.opacity = '.5';
+        setTimeout(function(){
+          var entry = {
+            name:  _uploadFile.name,
+            utype: utype,
+            udate: udate,
+            ftype: ext(_uploadFile.name),
+            size:  fmtBytes(_uploadFile.size),
+            ts:    new Date().toLocaleString('en-IN')
+          };
+
+          if (utype === 'Order Summary') {
+            /* Read mapped column sums */
+            var getSum = function(key){
+              var selId  = 'upl-map-' + key;
+              var col    = document.getElementById(selId).value;
+              if (!col || !_uploadHeaders.length) return 0;
+              var colIdx = _uploadHeaders.indexOf(col);
+              if (colIdx === -1) return 0;
+              var total = 0;
+              _uploadRows.forEach(function(row){
+                var colA = String(row[0] === undefined ? '' : row[0]).trim();
+                if (!colA) return;
+                var v = parseFloat(String(row[colIdx]).replace(/[,₹\s]/g,''));
+                if (!isNaN(v)) total += v;
+              });
+              return total;
+            };
+
+            /* No. of Orders: last non-blank value in column A */
+            var noOfOrders = 0;
+            for (var i = _uploadRows.length - 1; i >= 0; i--) {
+              var v = String(_uploadRows[i][0] === undefined ? '' : _uploadRows[i][0]).trim();
+              if (v) { noOfOrders = parseFloat(v.replace(/[,\s]/g,'')) || 0; break; }
+            }
+
+            var sums = {
+              extraValue:     getSum('extra-value'),
+              deliveryCharge: getSum('delivery-charge'),
+              platformFee:    getSum('platform-fee'),
+              ecToStaff:      getSum('ec-to-staff'),
+              orderTotal:     getSum('order-total')
+            };
+
+            entry.colMap = {
+              extraValue:      document.getElementById('upl-map-extra-value').value,
+              deliveryCharge:  document.getElementById('upl-map-delivery-charge').value,
+              platformFee:     document.getElementById('upl-map-platform-fee').value,
+              ecToStaff:       document.getElementById('upl-map-ec-to-staff').value,
+              orderTotal:      document.getElementById('upl-map-order-total').value
+            };
+            entry.sums      = sums;
+            entry.noOfOrders = noOfOrders;
+
+            /* ── Push into Operational Statement (potafo_ops_v1) ── */
+            var OPS_KEY = 'potafo_ops_v1';
+            var opsAll;
+            try { opsAll = JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); } catch(e) { opsAll = []; }
+
+            /* Fields that map directly to OPS_FIELDS */
+            var opsFieldMap = [
+              { key:'extraValue',     label:'Extra Value',     group:'Revenue from Customer', side:'income' },
+              { key:'deliveryCharge', label:'Delivery Charge', group:'Revenue from Customer', side:'income' },
+              { key:'platformFee',    label:'Platform Fee',    group:'Revenue from Customer', side:'income' },
+              { key:'ecToStaff',      label:'EC to Staff',     group:'Revenue from Customer', side:'income' }
+            ];
+
+            var ts  = Date.now();
+            var newEntries = [];
+
+            opsFieldMap.forEach(function(f){
+              var amt = sums[f.key] || 0;
+              if (amt > 0) {
+                newEntries.push({
+                  id:         'ops_' + ts + '_' + f.key,
+                  date:       udate,
+                  label:      f.label,
+                  group:      f.group,
+                  side:       f.side,
+                  amount:     amt,
+                  orderCount: noOfOrders,
+                  orderTotal: sums.orderTotal,
+                  source:     'Save Data'
+                });
+              }
+            });
+
+            /* If no field entries but we have order stats, push a meta record */
+            if (!newEntries.length) {
+              newEntries.push({
+                id:         'ops_' + ts + '_meta',
+                date:       udate,
+                label:      'Order Details',
+                group:      'Order Stats',
+                side:       'meta',
+                amount:     0,
+                orderCount: noOfOrders,
+                orderTotal: sums.orderTotal,
+                source:     'Save Data'
+              });
+            }
+
+            /* Prepend new entries */
+            opsAll = newEntries.concat(opsAll);
+            try { localStorage.setItem(OPS_KEY, JSON.stringify(opsAll)); } catch(e) {}
+
+            /* Refresh Operational Statement view if its functions are loaded */
+            if (typeof opsRenderStatement === 'function') {
+              try { opsRenderStatement(); } catch(e) {}
+            }
+            if (typeof opsSavedRender === 'function') {
+              try { opsSavedRender(); } catch(e) {}
+            }
+          } else if (utype === 'Merchant Transaction') {
+            /* Read mapped column sums */
+            var getSumMT = function(key){
+              var selId  = 'upl-map-' + key;
+              var col    = document.getElementById(selId).value;
+              if (!col || !_uploadHeaders.length) return 0;
+              var colIdx = _uploadHeaders.indexOf(col);
+              if (colIdx === -1) return 0;
+              var total = 0;
+              _uploadRows.forEach(function(row){
+                var colA = String(row[0] === undefined ? '' : row[0]).trim();
+                if (!colA) return;
+                var v = parseFloat(String(row[colIdx]).replace(/[,₹\s]/g,''));
+                if (!isNaN(v)) total += v;
+              });
+              return total;
+            };
+
+            var sumsMT = {
+              transactionCharge: getSumMT('transaction-charge'),
+              serviceCharge:     getSumMT('service-charge')
+            };
+
+            entry.colMap = {
+              transactionCharge: document.getElementById('upl-map-transaction-charge').value,
+              serviceCharge:     document.getElementById('upl-map-service-charge').value
+            };
+            entry.sums = sumsMT;
+
+            /* ── Push into Operational Statement (potafo_ops_v1) ── */
+            var OPS_KEY_MT = 'potafo_ops_v1';
+            var opsAllMT;
+            try { opsAllMT = JSON.parse(localStorage.getItem(OPS_KEY_MT) || '[]'); } catch(e) { opsAllMT = []; }
+
+            var opsFieldMapMT = [
+              { key:'transactionCharge', label:'Transaction Charge', group:'Revenue from Vendor', side:'income' },
+              { key:'serviceCharge',     label:'Service Charge',     group:'Revenue from Vendor', side:'income' }
+            ];
+
+            var tsMT = Date.now();
+            var newEntriesMT = [];
+
+            opsFieldMapMT.forEach(function(f){
+              var amt = sumsMT[f.key] || 0;
+              if (amt > 0) {
+                newEntriesMT.push({
+                  id:     'ops_' + tsMT + '_' + f.key,
+                  date:   udate,
+                  label:  f.label,
+                  group:  f.group,
+                  side:   f.side,
+                  amount: amt,
+                  source: 'Save Data'
+                });
+              }
+            });
+
+            opsAllMT = newEntriesMT.concat(opsAllMT);
+            try { localStorage.setItem(OPS_KEY_MT, JSON.stringify(opsAllMT)); } catch(e) {}
+
+            if (typeof opsRenderStatement === 'function') {
+              try { opsRenderStatement(); } catch(e) {}
+            }
+            if (typeof opsSavedRender === 'function') {
+              try { opsSavedRender(); } catch(e) {}
+            }
+          } else if (utype === 'Razorpay (Combined Statement)') {
+            var rzFeeTotal = 0;
+            var rzTaxTotal = 0;
+
+            _uploadRows.forEach(function(row){
+              var rawDate = row[10]; /* column K */
+              if (rawDate === undefined || rawDate === '' || rawDate === null) return;
+              var rowDate = rzNormDate(rawDate);
+              if (rowDate !== udate) return; /* only matching Import Date rows */
+
+              var g = parseFloat(String(row[6] === undefined ? '' : row[6]).replace(/[,₹\s]/g,''));
+              var h = parseFloat(String(row[7] === undefined ? '' : row[7]).replace(/[,₹\s]/g,''));
+              if (isNaN(g)) g = 0;
+              if (isNaN(h)) h = 0;
+
+              rzFeeTotal += (g - h);
+              rzTaxTotal += h;
+            });
+
+            entry.sums = {
+              razorpayFee: rzFeeTotal,
+              tax:         rzTaxTotal
+            };
+
+            /* ── Push into Operational Statement (potafo_ops_v1) ── */
+            var OPS_KEY_RZ = 'potafo_ops_v1';
+            var opsAllRZ;
+            try { opsAllRZ = JSON.parse(localStorage.getItem(OPS_KEY_RZ) || '[]'); } catch(e) { opsAllRZ = []; }
+
+            var opsFieldMapRZ = [
+              { key:'razorpayFee', label:'Razorpay Fee', group:'Direct Expense', side:'expense' },
+              { key:'tax',         label:'Tax',          group:'Direct Expense', side:'expense' }
+            ];
+
+            var tsRZ = Date.now();
+            var newEntriesRZ = [];
+
+            opsFieldMapRZ.forEach(function(f){
+              var amt = entry.sums[f.key] || 0;
+              if (amt > 0) {
+                newEntriesRZ.push({
+                  id:     'ops_' + tsRZ + '_' + f.key,
+                  date:   udate,
+                  label:  f.label,
+                  group:  f.group,
+                  side:   f.side,
+                  amount: amt,
+                  source: 'Save Data'
+                });
+              }
+            });
+
+            opsAllRZ = newEntriesRZ.concat(opsAllRZ);
+            try { localStorage.setItem(OPS_KEY_RZ, JSON.stringify(opsAllRZ)); } catch(e) {}
+
+            if (typeof opsRenderStatement === 'function') {
+              try { opsRenderStatement(); } catch(e) {}
+            }
+            if (typeof opsSavedRender === 'function') {
+              try { opsSavedRender(); } catch(e) {}
+            }
+          } else if (utype === 'DE Salary') {
+            var deTotal = 0;
+            _uploadRows.forEach(function(row){
+              var v = parseFloat(String(row[16] === undefined ? '' : row[16]).replace(/[,₹\s]/g,'')); /* column Q */
+              if (!isNaN(v)) deTotal += v;
+            });
+            var deSalary = deTotal / 2;
+
+            entry.sums = { deSalary: deSalary };
+
+            /* ── Push into Operational Statement (potafo_ops_v1) ── */
+            var OPS_KEY_DE = 'potafo_ops_v1';
+            var opsAllDE;
+            try { opsAllDE = JSON.parse(localStorage.getItem(OPS_KEY_DE) || '[]'); } catch(e) { opsAllDE = []; }
+
+            if (deSalary > 0) {
+              opsAllDE = [{
+                id:     'ops_' + Date.now() + '_de-salary',
+                date:   udate,
+                label:  'DE Salary',
+                group:  'Direct Expense',
+                side:   'expense',
+                amount: deSalary,
+                source: 'Save Data'
+              }].concat(opsAllDE);
+              try { localStorage.setItem(OPS_KEY_DE, JSON.stringify(opsAllDE)); } catch(e) {}
+            }
+
+            if (typeof opsRenderStatement === 'function') {
+              try { opsRenderStatement(); } catch(e) {}
+            }
+            if (typeof opsSavedRender === 'function') {
+              try { opsSavedRender(); } catch(e) {}
+            }
+          } else if (utype === 'Vendor Deduction') {
+            var vd = vdComputeValues();
+
+            entry.sums = { fineCollection: vd.fineCollection, cancellationCharge: vd.cancellationCharge };
+
+            /* ── Push into Operational Statement (potafo_ops_v1) ── */
+            var OPS_KEY_VD = 'potafo_ops_v1';
+            var opsAllVD;
+            try { opsAllVD = JSON.parse(localStorage.getItem(OPS_KEY_VD) || '[]'); } catch(e) { opsAllVD = []; }
+
+            var opsFieldMapVD = [
+              { key:'fineCollection',     label:'Fine Collection',     group:'Direct Income', side:'income' },
+              { key:'cancellationCharge', label:'Cancellation Charge', group:'Direct Income', side:'income' }
+            ];
+
+            var tsVD = Date.now();
+            var newEntriesVD = [];
+
+            opsFieldMapVD.forEach(function(f){
+              var amt = vd[f.key] || 0;
+              if (amt > 0) {
+                newEntriesVD.push({
+                  id:     'ops_' + tsVD + '_' + f.key,
+                  date:   udate,
+                  label:  f.label,
+                  group:  f.group,
+                  side:   f.side,
+                  amount: amt,
+                  source: 'Save Data'
+                });
+              }
+            });
+
+            opsAllVD = newEntriesVD.concat(opsAllVD);
+            try { localStorage.setItem(OPS_KEY_VD, JSON.stringify(opsAllVD)); } catch(e) {}
+
+            if (typeof opsRenderStatement === 'function') {
+              try { opsRenderStatement(); } catch(e) {}
+            }
+            if (typeof opsSavedRender === 'function') {
+              try { opsSavedRender(); } catch(e) {}
+            }
+          }
+
+          _uploadHistory.unshift(entry);
+          if (_uploadHistory.length > 20) _uploadHistory.pop();
+          localStorage.setItem('potafo_upload_history_v1', JSON.stringify(_uploadHistory));
+          setStatus('✓ ' + _uploadFile.name + ' saved successfully.', 'var(--shell-accent)');
+          btn.disabled = false; btn.style.opacity = '1';
+          renderHistory();
+        }, 600);
+      };
+      window.uploadClear = function(){
+        _uploadFile = null;
+        _uploadRows = []; _uploadHeaders = [];
+        document.getElementById('upload-file-input').value = '';
+        document.getElementById('upload-type-sel').value = '';
+        document.getElementById('upload-file-info').style.display = 'none';
+        document.getElementById('upload-col-mapping').style.display = 'none';
+        document.getElementById('upload-rz-preview').style.display = 'none';
+        document.getElementById('upload-de-preview').style.display = 'none';
+        document.getElementById('upload-vd-preview').style.display = 'none';
+        document.getElementById('upload-btn-upload').style.display = 'none';
+        document.getElementById('upload-btn-clear').style.display  = 'none';
+        clearMappingDropdowns();
+        setStatus('','');
+      };
+      function renderHistory(){
+        if (!_uploadHistory.length){ document.getElementById('upload-history-card').style.display='none'; return; }
+        document.getElementById('upload-history-card').style.display='';
+        var html = '';
+        _uploadHistory.forEach(function(e){
+          html += '<div class="set-row">'
+               +  '<span class="set-lbl" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+e.name+'">'+e.name+'</span>'
+               +  '<span style="display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">'
+               +  '<span style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--shell-text);">'+(e.utype||'—')+'</span>'
+               +  '<span style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--shell-muted);">'+(e.udate||'')+'</span>'
+               +  '<span style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--shell-accent);">'+(e.ftype||e.type||'')+'</span>'
+               +  '<span style="font-size:10px;font-family:\'DM Mono\',monospace;color:var(--shell-muted);">'+e.size+'</span>'
+               +  '</span></div>';
+        });
+        document.getElementById('upload-history-list').innerHTML = html;
+      }
+      renderHistory();
+    })();
+    </script>
 
   </div><!-- /main-content -->
 </div><!-- /app-shell -->
@@ -10328,6 +11264,7 @@ window.shellNav = function(page) {
     { id:'ops-f-fine-collection',     label:'Fine Collection',         group:'Direct Income',         side:'income' },
     { id:'ops-f-de-salary',           label:'DE Salary',               group:'Direct Expense',        side:'expense' },
     { id:'ops-f-razorpay-fee',        label:'Razorpay Fee',            group:'Direct Expense',        side:'expense' },
+    { id:'ops-f-tax',                 label:'Tax',                      group:'Direct Expense',        side:'expense' },
     { id:'ops-f-cancel-to-potafo',    label:'Cancel to Potafo',        group:'Direct Expense',        side:'expense' },
     { id:'ops-f-refunds',             label:'Refunds / Compensation',  group:'Direct Expense',        side:'expense' },
     { id:'ops-f-coupon-spend',        label:'Coupon Spend',            group:'Direct Expense',        side:'expense' }

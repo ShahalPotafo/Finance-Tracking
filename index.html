@@ -4439,6 +4439,7 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
           <div class="ops-view-pill">
             <button id="ops-view-btn-vertical" class="active" onclick="opsSetView('vertical')" title="Vertical View">&#x2195; Vertical</button>
             <button id="ops-view-btn-horizontal" onclick="opsSetView('horizontal')" title="Horizontal View">&#x2194; Horizontal</button>
+            <button id="ops-view-btn-comparison" onclick="opsSetView('comparison')" title="Comparison View">&#x1F4CA; Comparison</button>
           </div>
         </div>
 
@@ -4542,6 +4543,85 @@ header{padding:16px 24px;border:1px solid var(--bb-border);border-radius:12px;di
           </div>
 
         </div>
+
+        <!-- ── Comparison View ── -->
+        <div class="ops-cmp-wrapper" id="ops-cmp-wrapper" style="display:none;">
+
+          <!-- Period Filters -->
+          <div class="ops-cmp-filter-bar">
+            <div class="ops-cmp-period-block">
+              <div class="ops-cmp-period-lbl ops-cmp-period-lbl-current">Current Period</div>
+              <div class="ops-cmp-period-fields">
+                <div class="je-field-group">
+                  <label class="je-lbl">From Date</label>
+                  <input type="date" id="ops-cmp-cur-from" class="je-input" style="color-scheme:dark;">
+                </div>
+                <div class="je-field-group">
+                  <label class="je-lbl">To Date</label>
+                  <input type="date" id="ops-cmp-cur-to" class="je-input" style="color-scheme:dark;">
+                </div>
+              </div>
+            </div>
+            <div class="ops-cmp-swap-col">
+              <button class="je-btn je-btn-ghost ops-cmp-swap-btn" id="ops-cmp-swap-btn" title="Swap Periods">&#x21C4;</button>
+            </div>
+            <div class="ops-cmp-period-block">
+              <div class="ops-cmp-period-lbl ops-cmp-period-lbl-comparison">Comparison Period</div>
+              <div class="ops-cmp-period-fields">
+                <div class="je-field-group">
+                  <label class="je-lbl">From Date</label>
+                  <input type="date" id="ops-cmp-comp-from" class="je-input" style="color-scheme:dark;">
+                </div>
+                <div class="je-field-group">
+                  <label class="je-lbl">To Date</label>
+                  <input type="date" id="ops-cmp-comp-to" class="je-input" style="color-scheme:dark;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dashboard Cards -->
+          <div class="ops-cmp-cards-grid" id="ops-cmp-cards"></div>
+
+          <!-- Income Analysis -->
+          <div class="ops-cmp-table-section">
+            <div class="ops-cmp-table-hdr ops-cmp-table-hdr-income">Income Analysis</div>
+            <div class="ops-cmp-table-wrapper">
+              <table class="ops-cmp-table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th class="ops-cmp-th-r">Current Period</th>
+                    <th class="ops-cmp-th-r">Comparison Period</th>
+                    <th class="ops-cmp-th-r">Difference</th>
+                    <th class="ops-cmp-th-r">% Change</th>
+                  </tr>
+                </thead>
+                <tbody id="ops-cmp-income-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Expense Analysis -->
+          <div class="ops-cmp-table-section">
+            <div class="ops-cmp-table-hdr ops-cmp-table-hdr-expense">Expense Analysis</div>
+            <div class="ops-cmp-table-wrapper">
+              <table class="ops-cmp-table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th class="ops-cmp-th-r">Current Period</th>
+                    <th class="ops-cmp-th-r">Comparison Period</th>
+                    <th class="ops-cmp-th-r">Difference</th>
+                    <th class="ops-cmp-th-r">% Change</th>
+                  </tr>
+                </thead>
+                <tbody id="ops-cmp-expense-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /ops-cmp-wrapper -->
 
         <!-- ── Add Data Modal ── -->
         <div id="ops-add-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:400;align-items:flex-start;justify-content:center;overflow-y:auto;padding:32px 16px;backdrop-filter:blur(4px);">
@@ -10983,6 +11063,173 @@ window.shellNav = function(page) {
 }
 /* Remove top margin on expense section in horizontal mode (already side-by-side) */
 .ops-stmt-wrapper.ops-view-horizontal .ops-stmt-section { margin-top: 0 !important; }
+
+/* ── Comparison View ── */
+.ops-cmp-wrapper { max-width: 1000px; margin: 0 auto 40px; }
+.ops-cmp-filter-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.ops-cmp-period-block {
+  flex: 1;
+  min-width: 240px;
+  background: #13141c;
+  border: 1px solid #1c1e2a;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.ops-cmp-period-lbl {
+  font-size: 0.72em;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.ops-cmp-period-lbl-current    { color: #5b8af0; }
+.ops-cmp-period-lbl-comparison { color: #a78bfa; }
+.ops-cmp-period-fields { display: flex; gap: 12px; flex-wrap: wrap; }
+.ops-cmp-period-fields .je-field-group { flex: 1; min-width: 120px; }
+.ops-cmp-swap-col { display: flex; align-items: center; justify-content: center; }
+.ops-cmp-swap-btn {
+  width: 38px; height: 38px; border-radius: 50%; padding: 0;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  margin-top: 18px;
+}
+
+/* Dashboard cards */
+.ops-cmp-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.ops-cmp-card {
+  background: #13141c;
+  border: 1px solid #1c1e2a;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.ops-cmp-card-lbl {
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #484d6a;
+  margin-bottom: 10px;
+}
+.ops-cmp-card-vals { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.ops-cmp-card-val-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ops-cmp-card-val-tag {
+  font-size: 0.68em;
+  color: #484d6a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-family: 'Syne', sans-serif;
+}
+.ops-cmp-card-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.05em;
+  font-weight: 600;
+  color: #e4e6f2;
+}
+.ops-cmp-card-val-muted { color: #7680a0; font-size: 0.95em; }
+.ops-cmp-card-diff { padding-top: 8px; border-top: 1px solid rgba(28,30,42,0.6); }
+
+/* Comparison indicator badges */
+.ops-cmp-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.ops-cmp-ind-up   { color: #3ecf8e; }
+.ops-cmp-ind-down { color: #e05c6a; }
+.ops-cmp-ind-flat { color: #7680a0; }
+
+/* Analysis tables */
+.ops-cmp-table-section { margin-bottom: 26px; }
+.ops-cmp-table-hdr {
+  padding: 10px 18px;
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  border-radius: 10px 10px 0 0;
+}
+.ops-cmp-table-hdr-income  { color: #5af0c8; background: rgba(90,240,200,0.06); border: 1px solid rgba(90,240,200,0.12); border-bottom: none; }
+.ops-cmp-table-hdr-expense { color: #f47c7c; background: rgba(244,124,124,0.06); border: 1px solid rgba(244,124,124,0.12); border-bottom: none; }
+.ops-cmp-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #1c1e2a;
+  border-radius: 0 0 12px 12px;
+  background: #13141c;
+}
+.ops-cmp-table { width: 100%; border-collapse: collapse; font-size: 0.88em; min-width: 600px; }
+.ops-cmp-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 0.74em;
+  font-weight: 700;
+  color: #484d6a;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #1c1e2a;
+  white-space: nowrap;
+}
+.ops-cmp-th-r { text-align: right !important; }
+.ops-cmp-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(28,30,42,0.55);
+  color: #e4e6f2;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.92em;
+}
+.ops-cmp-table td:first-child { font-family: 'Syne', sans-serif; font-weight: 600; color: #c8cce0; }
+.ops-cmp-table td.ops-cmp-td-r { text-align: right; }
+.ops-cmp-table tr:last-child td { border-bottom: none; }
+.ops-cmp-table tr:nth-child(even) td { background: rgba(255,255,255,0.013); }
+
+/* Line-item breakdown rows */
+.ops-cmp-table tr.ops-cmp-group-row td {
+  padding: 8px 16px 6px;
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #484d6a;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(28,30,42,0.5);
+  font-family: 'Syne', sans-serif;
+}
+.ops-cmp-table tr.ops-cmp-group-row:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.ops-cmp-item-lbl { padding-left: 30px !important; color: #a0a5c0; font-weight: 500; }
+.ops-cmp-table tr.ops-cmp-subtotal-row td {
+  font-weight: 700;
+  color: #a0a5c0;
+  background: rgba(255,255,255,0.022);
+  border-top: 1px solid #1c1e2a;
+  font-family: 'Syne', sans-serif;
+}
+.ops-cmp-table tr.ops-cmp-subtotal-row td:nth-child(even) { background: rgba(255,255,255,0.022); }
+.ops-cmp-table tr.ops-cmp-grand-row td {
+  font-weight: 800;
+  font-size: 0.97em;
+  border-top: 2px solid #1c1e2a;
+  font-family: 'Syne', sans-serif;
+}
+.ops-cmp-table tr.ops-cmp-grand-row.ops-cmp-grand-income td  { color: #5af0c8; }
+.ops-cmp-table tr.ops-cmp-grand-row.ops-cmp-grand-expense td { color: #f47c7c; }
+.ops-cmp-table tr.ops-cmp-meta-row td {
+  color: #a78bfa;
+  font-weight: 600;
+  background: rgba(167,139,250,0.04);
+}
+.ops-cmp-table tr.ops-cmp-meta-row td:first-child { color: #7680a0; font-family: 'Syne', sans-serif; }
 </style>
 
 <!-- ══ OPS STATEMENT RENDER SCRIPT ══ -->
@@ -11208,18 +11455,30 @@ window.shellNav = function(page) {
   var OPS_VIEW_KEY = 'potafo_ops_view';
 
   function opsSetView(v) {
-    var wrapper = document.getElementById('ops-stmt-wrapper');
+    var wrapper    = document.getElementById('ops-stmt-wrapper');
+    var cmpWrapper = document.getElementById('ops-cmp-wrapper');
     var btnV = document.getElementById('ops-view-btn-vertical');
     var btnH = document.getElementById('ops-view-btn-horizontal');
+    var btnC = document.getElementById('ops-view-btn-comparison');
     if (!wrapper) return;
-    if (v === 'horizontal') {
-      wrapper.classList.add('ops-view-horizontal');
-      if (btnV) btnV.classList.remove('active');
-      if (btnH) btnH.classList.add('active');
+
+    [btnV, btnH, btnC].forEach(function(b) { if (b) b.classList.remove('active'); });
+
+    if (v === 'comparison') {
+      wrapper.style.display = 'none';
+      if (cmpWrapper) cmpWrapper.style.display = 'block';
+      if (btnC) btnC.classList.add('active');
+      if (typeof window.opsCmpRender === 'function') window.opsCmpRender();
     } else {
-      wrapper.classList.remove('ops-view-horizontal');
-      if (btnV) btnV.classList.add('active');
-      if (btnH) btnH.classList.remove('active');
+      wrapper.style.display = '';
+      if (cmpWrapper) cmpWrapper.style.display = 'none';
+      if (v === 'horizontal') {
+        wrapper.classList.add('ops-view-horizontal');
+        if (btnH) btnH.classList.add('active');
+      } else {
+        wrapper.classList.remove('ops-view-horizontal');
+        if (btnV) btnV.classList.add('active');
+      }
     }
     try { localStorage.setItem(OPS_VIEW_KEY, v); } catch(e) {}
   }
@@ -11588,6 +11847,279 @@ window.shellNav = function(page) {
     if (typeof _origOpsSave === 'function') _origOpsSave();
     var p = document.getElementById('ops-saved-panel');
     if (p && p.style.display !== 'none') opsSavedRender();
+  };
+
+})();
+</script>
+
+<!-- ══ OPS COMPARISON VIEW SCRIPT ══ -->
+<script>
+(function() {
+
+  var OPS_KEY = 'potafo_ops_v1';
+
+  /* Mirrors INCOME_GROUPS / EXPENSE_GROUPS from the main statement render script,
+     so every individual line item can be compared period-over-period. */
+  var CMP_INCOME_GROUPS = [
+    { label: 'Revenue from Customer', items: ['Extra Value','Delivery Charge','Platform Fee','EC to Staff'] },
+    { label: 'Revenue from Vendor',   items: ['Transaction Charge','Service Charge','Ad Revenue'] },
+    { label: 'Direct Income',         items: ['Cancellation Charge','Fine Collection'] }
+  ];
+  var CMP_EXPENSE_GROUPS = [
+    { label: 'Direct Expense', items: ['DE Salary','Razorpay Fee','Cancel to Potafo','Refunds / Compensation','Coupon Spend'] }
+  ];
+
+  function cmpLoad() {
+    try { return JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  function cmpFmt(n) {
+    return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function cmpFmtCur(n) {
+    var sign = n < 0 ? '-' : '';
+    return sign + '\u20B9' + cmpFmt(Math.abs(n));
+  }
+
+  function cmpFmtInt(n) {
+    return Math.round(n).toLocaleString('en-IN');
+  }
+
+  function cmpToDateStr(d) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  /* Default: Current Period = month-to-date, Comparison Period = previous full month (only if empty) */
+  function cmpSetDefaultDates() {
+    var curFrom  = document.getElementById('ops-cmp-cur-from');
+    var curTo    = document.getElementById('ops-cmp-cur-to');
+    var compFrom = document.getElementById('ops-cmp-comp-from');
+    var compTo   = document.getElementById('ops-cmp-comp-to');
+    if (!curFrom || !curTo || !compFrom || !compTo) return;
+    if (curFrom.value || curTo.value || compFrom.value || compTo.value) return;
+
+    var today          = new Date();
+    var monthStart      = new Date(today.getFullYear(), today.getMonth(), 1);
+    var prevMonthEnd    = new Date(today.getFullYear(), today.getMonth(), 0);
+    var prevMonthStart  = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), 1);
+
+    curFrom.value  = cmpToDateStr(monthStart);
+    curTo.value    = cmpToDateStr(today);
+    compFrom.value = cmpToDateStr(prevMonthStart);
+    compTo.value   = cmpToDateStr(prevMonthEnd);
+  }
+
+  /* Compute Income/Expense/Order totals (and per-label breakdown) for a given date range */
+  function cmpPeriodData(from, to) {
+    var all = cmpLoad();
+    var totalIncome = 0, totalExpense = 0;
+    var byLabel = {};
+    var ordersByDate = {};
+    all.forEach(function(r) {
+      if (from && r.date < from) return;
+      if (to   && r.date > to)   return;
+      if (r.side === 'income')  totalIncome  += (r.amount || 0);
+      if (r.side === 'expense') totalExpense += (r.amount || 0);
+      if (r.side === 'income' || r.side === 'expense') {
+        byLabel[r.label] = (byLabel[r.label] || 0) + (r.amount || 0);
+      }
+      if ((r.orderCount || 0) > 0) {
+        ordersByDate[r.date] = Math.max(ordersByDate[r.date] || 0, r.orderCount);
+      }
+    });
+    var totalOrders = Object.values(ordersByDate).reduce(function(a, b) { return a + b; }, 0);
+    var incomePerOrder  = totalOrders > 0 ? totalIncome  / totalOrders : 0;
+    var expensePerOrder = totalOrders > 0 ? totalExpense / totalOrders : 0;
+    var netProfit        = totalIncome - totalExpense;
+    var profitPerOrder   = totalOrders > 0 ? netProfit / totalOrders : 0;
+    return {
+      totalIncome: totalIncome, totalExpense: totalExpense, totalOrders: totalOrders,
+      incomePerOrder: incomePerOrder, expensePerOrder: expensePerOrder,
+      netProfit: netProfit, profitPerOrder: profitPerOrder, byLabel: byLabel
+    };
+  }
+
+  function cmpDiffClass(diff, tol) {
+    tol = tol || 0.005;
+    if (diff > tol)  return 'ops-cmp-ind-up';
+    if (diff < -tol) return 'ops-cmp-ind-down';
+    return 'ops-cmp-ind-flat';
+  }
+
+  function cmpArrow(diff, tol) {
+    tol = tol || 0.005;
+    if (diff > tol)  return '&#x25B2; ';
+    if (diff < -tol) return '&#x25BC; ';
+    return '&#x2014; ';
+  }
+
+  function cmpPct(cur, comp) {
+    if (Math.abs(comp) < 0.005) return Math.abs(cur) < 0.005 ? 0 : null; /* null = N/A (no baseline) */
+    return ((cur - comp) / Math.abs(comp)) * 100;
+  }
+
+  function cmpPctTxt(pct) {
+    if (pct === null) return 'N/A';
+    return (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+  }
+
+  /* Render a single dashboard card */
+  function cmpCardHtml(label, curVal, compVal, isInteger) {
+    var diff   = curVal - compVal;
+    var pct    = cmpPct(curVal, compVal);
+    var fmtVal = isInteger ? cmpFmtInt : cmpFmtCur;
+    var cls    = cmpDiffClass(diff);
+    return (
+      '<div class="ops-cmp-card">' +
+        '<div class="ops-cmp-card-lbl">' + label + '</div>' +
+        '<div class="ops-cmp-card-vals">' +
+          '<div class="ops-cmp-card-val-row"><span class="ops-cmp-card-val-tag">Current</span><span class="ops-cmp-card-val">' + fmtVal(curVal) + '</span></div>' +
+          '<div class="ops-cmp-card-val-row"><span class="ops-cmp-card-val-tag">Comparison</span><span class="ops-cmp-card-val ops-cmp-card-val-muted">' + fmtVal(compVal) + '</span></div>' +
+        '</div>' +
+        '<div class="ops-cmp-card-diff"><span class="ops-cmp-ind ' + cls + '">' + cmpArrow(diff) + fmtVal(Math.abs(diff)) + ' (' + cmpPctTxt(pct) + ')</span></div>' +
+      '</div>'
+    );
+  }
+
+  /* Render a single analysis table row. rowClass/labelClass let the same
+     row-builder serve plain rows, indented line items, subtotals, and grand totals. */
+  function cmpRowHtml(label, curVal, compVal, isInteger, rowClass, labelClass) {
+    var diff    = curVal - compVal;
+    var pct     = cmpPct(curVal, compVal);
+    var fmtVal  = isInteger ? cmpFmtInt : cmpFmtCur;
+    var cls     = cmpDiffClass(diff);
+    var trAttr  = rowClass    ? ' class="' + rowClass + '"'    : '';
+    var lblAttr = labelClass  ? ' class="' + labelClass + '"'  : '';
+    return (
+      '<tr' + trAttr + '>' +
+        '<td' + lblAttr + '>' + label + '</td>' +
+        '<td class="ops-cmp-td-r">' + fmtVal(curVal) + '</td>' +
+        '<td class="ops-cmp-td-r">' + fmtVal(compVal) + '</td>' +
+        '<td class="ops-cmp-td-r"><span class="' + cls + '">' + cmpArrow(diff) + fmtVal(Math.abs(diff)) + '</span></td>' +
+        '<td class="ops-cmp-td-r"><span class="' + cls + '">' + cmpPctTxt(pct) + '</span></td>' +
+      '</tr>'
+    );
+  }
+
+  function cmpGroupHeaderRow(label) {
+    return '<tr class="ops-cmp-group-row"><td colspan="5">' + label + '</td></tr>';
+  }
+
+  /* Build group-by-group line-item rows (with subtotals) for a set of groups.
+     Returns the HTML plus the combined grand total across all groups/items. */
+  function cmpBuildGroupRows(groups, curByLabel, compByLabel) {
+    var html = '';
+    var grandCur = 0, grandComp = 0;
+    groups.forEach(function(g) {
+      html += cmpGroupHeaderRow(g.label);
+      var subCur = 0, subComp = 0;
+      g.items.forEach(function(item) {
+        var cv = curByLabel[item]  || 0;
+        var cm = compByLabel[item] || 0;
+        subCur  += cv;
+        subComp += cm;
+        html += cmpRowHtml(item, cv, cm, false, '', 'ops-cmp-item-lbl');
+      });
+      html += cmpRowHtml('Total \u2013 ' + g.label, subCur, subComp, false, 'ops-cmp-subtotal-row');
+      grandCur  += subCur;
+      grandComp += subComp;
+    });
+    return { html: html, grandCur: grandCur, grandComp: grandComp };
+  }
+
+  function cmpRender() {
+    cmpSetDefaultDates();
+    var curFrom  = (document.getElementById('ops-cmp-cur-from')  || {}).value || '';
+    var curTo    = (document.getElementById('ops-cmp-cur-to')    || {}).value || '';
+    var compFrom = (document.getElementById('ops-cmp-comp-from') || {}).value || '';
+    var compTo   = (document.getElementById('ops-cmp-comp-to')   || {}).value || '';
+
+    var cur  = cmpPeriodData(curFrom, curTo);
+    var comp = cmpPeriodData(compFrom, compTo);
+
+    var cardsEl = document.getElementById('ops-cmp-cards');
+    if (cardsEl) {
+      cardsEl.innerHTML =
+        cmpCardHtml('Total Income',      cur.totalIncome,     comp.totalIncome)     +
+        cmpCardHtml('Income Per Order',  cur.incomePerOrder,  comp.incomePerOrder)  +
+        cmpCardHtml('Total Expense',     cur.totalExpense,    comp.totalExpense)    +
+        cmpCardHtml('Expense Per Order', cur.expensePerOrder, comp.expensePerOrder) +
+        cmpCardHtml('Net Profit',        cur.netProfit,       comp.netProfit)       +
+        cmpCardHtml('Profit Per Order',  cur.profitPerOrder,  comp.profitPerOrder);
+    }
+
+    var incTbody = document.getElementById('ops-cmp-income-tbody');
+    if (incTbody) {
+      var incBreak = cmpBuildGroupRows(CMP_INCOME_GROUPS, cur.byLabel, comp.byLabel);
+      incTbody.innerHTML =
+        incBreak.html +
+        cmpRowHtml('Income Grand Total', incBreak.grandCur, incBreak.grandComp, false, 'ops-cmp-grand-row ops-cmp-grand-income') +
+        cmpRowHtml('Total Orders',       cur.totalOrders,    comp.totalOrders,  true,  'ops-cmp-meta-row') +
+        cmpRowHtml('Income Per Order',   cur.incomePerOrder, comp.incomePerOrder, false, 'ops-cmp-meta-row');
+    }
+
+    var expTbody = document.getElementById('ops-cmp-expense-tbody');
+    if (expTbody) {
+      var expBreak = cmpBuildGroupRows(CMP_EXPENSE_GROUPS, cur.byLabel, comp.byLabel);
+      expTbody.innerHTML =
+        expBreak.html +
+        cmpRowHtml('Expense Grand Total', expBreak.grandCur, expBreak.grandComp, false, 'ops-cmp-grand-row ops-cmp-grand-expense') +
+        cmpRowHtml('Total Orders',        cur.totalOrders,     comp.totalOrders,   true,  'ops-cmp-meta-row') +
+        cmpRowHtml('Expense Per Order',   cur.expensePerOrder, comp.expensePerOrder, false, 'ops-cmp-meta-row');
+    }
+  }
+
+  window.opsCmpRender = cmpRender;
+
+  /* Swap the two periods */
+  function cmpWireSwap() {
+    var btn = document.getElementById('ops-cmp-swap-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var curFrom  = document.getElementById('ops-cmp-cur-from');
+      var curTo    = document.getElementById('ops-cmp-cur-to');
+      var compFrom = document.getElementById('ops-cmp-comp-from');
+      var compTo   = document.getElementById('ops-cmp-comp-to');
+      if (!curFrom || !curTo || !compFrom || !compTo) return;
+      var tf = curFrom.value, tt = curTo.value;
+      curFrom.value  = compFrom.value; curTo.value = compTo.value;
+      compFrom.value = tf; compTo.value = tt;
+      cmpRender();
+    });
+  }
+
+  function cmpWireFilters() {
+    ['ops-cmp-cur-from', 'ops-cmp-cur-to', 'ops-cmp-comp-from', 'ops-cmp-comp-to'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', cmpRender);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    cmpWireSwap();
+    cmpWireFilters();
+  });
+
+  /* Re-render comparison view after Add Data / Edit / Delete, only if it's currently visible */
+  function cmpReRenderIfVisible() {
+    var w = document.getElementById('ops-cmp-wrapper');
+    if (w && w.style.display !== 'none') cmpRender();
+  }
+  var _origCmpSave = window.opsSaveAddData;
+  window.opsSaveAddData = function() {
+    if (typeof _origCmpSave === 'function') _origCmpSave();
+    cmpReRenderIfVisible();
+  };
+  var _origCmpDel = window.opsConfirmDelete;
+  window.opsConfirmDelete = function() {
+    if (typeof _origCmpDel === 'function') _origCmpDel();
+    cmpReRenderIfVisible();
+  };
+  var _origCmpEdit = window.opsSaveEdit;
+  window.opsSaveEdit = function() {
+    if (typeof _origCmpEdit === 'function') _origCmpEdit();
+    cmpReRenderIfVisible();
   };
 
 })();
